@@ -1,0 +1,68 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"log"
+	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/febrianj/go-task-management-api/internal/config"
+	"github.com/febrianj/go-task-management-api/internal/repository/postgres"
+	transport "github.com/febrianj/go-task-management-api/internal/transport/http"
+
+	"github.com/joho/godotenv"
+)
+
+func main() {
+	_ = godotenv.Load()
+
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+
+	// cancelled on SIGINT and SIGTERM, context is the shutdown trigger
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	pool, err := postgres.NewPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("database: %v", err)
+	}
+	defer pool.Close()
+
+	srv := &http.Server{
+		Addr:              ":" + cfg.Port,
+		Handler:           transport.NewRouter(transport.Deps{Pool: pool}),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	// Serve in a goroutine, main can wait on ctx.Done()
+	errCh := make(chan error, 1)
+	go func() {
+		log.Printf("listening on :%s", cfg.Port)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case err := <-errCh:
+		log.Fatalf("server: %v", err)
+	case <-ctx.Done():
+		log.Println("shutdown")
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown failed: %v", err)
+	}
+	log.Println("graceful shutddown")
+}
