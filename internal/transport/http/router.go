@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -14,11 +15,12 @@ type Deps struct {
 func NewRouter(d Deps) http.Handler {
 	mux := http.NewServeMux()
 
-	// Liveness
+	// Liveness, is service up, no dependency checks
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "ok"})
 	})
 
+	// Readiness, check db connection
 	mux.HandleFunc("GET /ready", func(w http.ResponseWriter, r *http.Request) {
 		if err := d.Pool.Ping(r.Context()); err != nil {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{
@@ -36,3 +38,5 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
+
+func RequestIDFromContext(ctx context.Context) string { return "" }
