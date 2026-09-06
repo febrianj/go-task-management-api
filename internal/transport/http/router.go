@@ -1,8 +1,7 @@
 package http
 
 import (
-	"context"
-	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -10,6 +9,7 @@ import (
 
 type Deps struct {
 	Pool *pgxpool.Pool
+	Log  *slog.Logger
 }
 
 func NewRouter(d Deps) http.Handler {
@@ -17,26 +17,23 @@ func NewRouter(d Deps) http.Handler {
 
 	// Liveness, is service up, no dependency checks
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "ok"})
+		WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
 	// Readiness, check db connection
 	mux.HandleFunc("GET /ready", func(w http.ResponseWriter, r *http.Request) {
 		if err := d.Pool.Ping(r.Context()); err != nil {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+			WriteJSON(w, http.StatusServiceUnavailable, map[string]string{
 				"status": "unavailable",
 				"reason": "database",
 			})
+			return
 		}
+		WriteJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 	})
 
-	return mux
+	mux.HandleFunc("GET /panic", func(w http.ResponseWriter, r *http.Request) {
+		panic("trigger panic")
+	})
+	return Chain(mux, RequestID, Recovery(d.Log), Logging(d.Log))
 }
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-func RequestIDFromContext(ctx context.Context) string { return "" }

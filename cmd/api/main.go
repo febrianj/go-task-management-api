@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/febrianj/go-task-management-api/internal/config"
+	"github.com/febrianj/go-task-management-api/internal/platform/logger"
 	"github.com/febrianj/go-task-management-api/internal/repository/postgres"
 	transport "github.com/febrianj/go-task-management-api/internal/transport/http"
 
@@ -24,19 +27,23 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
+	logg := logger.New(cfg.LogLevel, cfg.IsProduction())
+	slog.SetDefault(logg)
+
 	// cancelled on SIGINT and SIGTERM, context is the shutdown trigger
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	pool, err := postgres.NewPool(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("database: %v", err)
+		logg.Error("database connection failed", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           transport.NewRouter(transport.Deps{Pool: pool}),
+		Handler:           transport.NewRouter(transport.Deps{Pool: pool, Log: logg}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,
