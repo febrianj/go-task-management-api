@@ -26,3 +26,6 @@ db-reset:
 	docker-compose up -d db
 	@sleep 6
 	@(MAKE) migrate
+
+test:
+	go test ./...
