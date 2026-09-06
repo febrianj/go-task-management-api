@@ -53,7 +53,7 @@ func main() {
 	// Serve in a goroutine, main can wait on ctx.Done()
 	errCh := make(chan error, 1)
 	go func() {
-		log.Printf("listening on :%s", cfg.Port)
+		logg.Info("server start", "port", cfg.Port, "env", cfg.AppEnv)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}

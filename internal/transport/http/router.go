@@ -35,5 +35,5 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /panic", func(w http.ResponseWriter, r *http.Request) {
 		panic("trigger panic")
 	})
-	return Chain(mux, RequestID, Recovery(d.Log), Logging(d.Log))
+	return Chain(mux, RequestID, Logging(d.Log), Recovery(d.Log))
 }
