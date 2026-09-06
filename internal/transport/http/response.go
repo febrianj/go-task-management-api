@@ -47,5 +47,6 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		Message:   appErr.Message,
 		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		RequestID: RequestIDFromContext(r.Context()),
+		Details:   appErr.Details,
 	})
 }

@@ -12,8 +12,11 @@ import (
 	"time"
 
 	"github.com/febrianj/go-task-management-api/internal/config"
+	"github.com/febrianj/go-task-management-api/internal/platform/hash"
+	"github.com/febrianj/go-task-management-api/internal/platform/jwt"
 	"github.com/febrianj/go-task-management-api/internal/platform/logger"
 	"github.com/febrianj/go-task-management-api/internal/repository/postgres"
+	"github.com/febrianj/go-task-management-api/internal/service/auth"
 	transport "github.com/febrianj/go-task-management-api/internal/transport/http"
 
 	"github.com/joho/godotenv"
@@ -41,9 +44,17 @@ func main() {
 	}
 	defer pool.Close()
 
+	hasher := hash.NewBcrypt(cfg.BcryptCost)
+	issuer := jwt.NewIssuer(cfg.JWTSecret, cfg.JWTTTL)
+	userRepo := postgres.NewUserRepo(pool)
+	authSvc := auth.NewService(userRepo, hasher, issuer)
+	authHandler := transport.NewAuthHandler(authSvc)
+
 	srv := &http.Server{
-		Addr:              ":" + cfg.Port,
-		Handler:           transport.NewRouter(transport.Deps{Pool: pool, Log: logg}),
+		Addr: ":" + cfg.Port,
+		Handler: transport.NewRouter(transport.Deps{
+			Pool: pool, Log: logg, Auth: authHandler, Issuer: issuer,
+		}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -61,15 +72,16 @@ func main() {
 
 	select {
 	case err := <-errCh:
-		log.Fatalf("server: %v", err)
+		logg.Error("server failed", "error", err)
+		os.Exit(1)
 	case <-ctx.Done():
-		log.Println("shutdown")
+		logg.Info("shutdown signal received")
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Printf("shutdown failed: %v", err)
+		logg.Error("shutdown failed", "error", err)
 	}
-	log.Println("graceful shutddown")
+	logg.Info("shutddown completed")
 }

@@ -6,9 +6,13 @@ import (
 )
 
 const (
-	CodeInvalidRequest = "INVALID_REQUEST"
-	CodeNotFound       = "NOT_FOUND"
-	CodeInternal       = "INTERNAL_ERROR"
+	CodeInvalidRequest     = "INVALID_REQUEST"
+	CodeNotFound           = "NOT_FOUND"
+	CodeInternal           = "INTERNAL_ERROR"
+	CodeValidation         = "VALIDATION_ERROR"
+	CodeUnauthorized       = "UNAUTHORIZED"
+	CodeInvalidCredentials = "INVALID_CREDENTIALS"
+	CodeEmailAlreadyExists = "EMAIL_ALREADY_EXISTS"
 )
 
 // FieldError describes a single field-level validation failure
@@ -56,6 +60,19 @@ func BadRequest(msg string) *AppError {
 
 func NotFound(code, msg string) *AppError {
 	return New(http.StatusNotFound, code, msg)
+}
+
+func Validation(details []FieldError) *AppError {
+	return &AppError{
+		HTTPStatus: http.StatusUnprocessableEntity,
+		Code:       CodeValidation,
+		Message:    "validation failed",
+		Details:    details,
+	}
+}
+
+func Unauthorized(code, msg string) *AppError {
+	return New(http.StatusUnauthorized, code, msg)
 }
 
 func Conflict(code, msg string) *AppError {

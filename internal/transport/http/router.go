@@ -4,12 +4,15 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/febrianj/go-task-management-api/internal/platform/jwt"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Deps struct {
-	Pool *pgxpool.Pool
-	Log  *slog.Logger
+	Pool   *pgxpool.Pool
+	Log    *slog.Logger
+	Auth   *AuthHandler
+	Issuer *jwt.Issuer
 }
 
 func NewRouter(d Deps) http.Handler {
@@ -35,5 +38,17 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("GET /panic", func(w http.ResponseWriter, r *http.Request) {
 		panic("trigger panic")
 	})
+
+	mux.HandleFunc("POST /auth/register", d.Auth.Register)
+	mux.HandleFunc("POST /auth/login", d.Auth.Login)
+
+	authOnly := Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		u, _ := UserFromContext(r.Context())
+		WriteSuccess(w, http.StatusOK, map[string]string{
+			"user_id": u.ID.String(), "team_id": u.TeamID.String(),
+		})
+	}), Authenticate(d.Issuer))
+	mux.Handle("GET /me", authOnly)
+
 	return Chain(mux, RequestID, Logging(d.Log), Recovery(d.Log))
 }

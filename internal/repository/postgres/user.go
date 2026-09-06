@@ -18,6 +18,8 @@ type UserRepo struct {
 	pool *pgxpool.Pool
 }
 
+func NewUserRepo(pool *pgxpool.Pool) *UserRepo { return &UserRepo{pool: pool} }
+
 // CreateWithTeam joins an existing team or creates it, then insert user
 func (r *UserRepo) CreateWithTeam(ctx context.Context, u *domain.User, teamName string) error {
 	tx, err := r.pool.Begin(ctx)

@@ -122,7 +122,7 @@ func Logging(log *slog.Logger) Middleware {
 
 			latency := time.Since(start)
 
-			log.Log(r.Context(), levelFor(rec.status), "http_requeest",
+			log.Log(r.Context(), levelFor(rec.status), "http_request",
 				"request_id", RequestIDFromContext(r.Context()),
 				"method", r.Method,
 				"path", r.URL.Path,
