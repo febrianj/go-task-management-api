@@ -17,7 +17,42 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-  
+
+  migrate:
+    image: postgres:16-alpine
+    volumes:
+      - ./migrations:/migrations:ro
+    environment:
+      PGPASSWORD: postgres
+    entrypoint: >
+      sh -c "for f in /migrations/*.sql; do
+              echo applying $$f;
+              psql -h db -U postgres -d taskapidb -v ON_ERROR_STOP=1 -f $$f || exit 1;
+            done"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
+    container_name: taskapi
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: development
+      PORT: 8000
+      DATABASE_URL: postgres://postgres:postgres@db:5432/taskapidb?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-32-chars-min}
+      JWT_TTL: 24h
+      BCRYPT_COST: 12
+      LOG_LEVEL: info
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
 volumes: 
   pgdata:
   

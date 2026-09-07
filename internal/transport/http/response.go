@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 type successEnvelope struct {
 	Status string `json:"status"`
 	Data   any    `json:"data"`
+	Meta   any    `json:"meta,omitempty"`
 }
 
 type errorEnvelope struct {
@@ -35,10 +37,21 @@ func WriteSuccess(w http.ResponseWriter, status int, data any) {
 	WriteJSON(w, status, successEnvelope{Status: "success", Data: data})
 }
 
+func WriteSuccessMeta(w http.ResponseWriter, status int, data any, meta any) {
+	WriteJSON(w, status, successEnvelope{Status: "success", Data: data, Meta: meta})
+}
+
 func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	var appErr *apperr.AppError
 	if !errors.As(err, &appErr) {
 		appErr = apperr.Internal(err)
+	}
+	if appErr.HTTPStatus >= 500 {
+		slog.ErrorContext(r.Context(), "request failed",
+			"request_id", RequestIDFromContext(r.Context()),
+			"code", appErr.Code,
+			"error", appErr.Error(),
+		)
 	}
 
 	WriteJSON(w, appErr.HTTPStatus, errorEnvelope{

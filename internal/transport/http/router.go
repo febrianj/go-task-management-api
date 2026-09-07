@@ -13,6 +13,7 @@ type Deps struct {
 	Log    *slog.Logger
 	Auth   *AuthHandler
 	Issuer *jwt.Issuer
+	Task   *TaskHandler
 }
 
 func NewRouter(d Deps) http.Handler {
@@ -41,6 +42,15 @@ func NewRouter(d Deps) http.Handler {
 
 	mux.HandleFunc("POST /auth/register", d.Auth.Register)
 	mux.HandleFunc("POST /auth/login", d.Auth.Login)
+
+	protected := Authenticate(d.Issuer)
+
+	mux.Handle("POST /tasks", protected(http.HandlerFunc(d.Task.Create)))
+	mux.Handle("GET /tasks", protected(http.HandlerFunc(d.Task.List)))
+	mux.Handle("GET /tasks/{id}", protected(http.HandlerFunc(d.Task.Get)))
+	mux.Handle("PUT /tasks/{id}", protected(http.HandlerFunc(d.Task.Update)))
+	mux.Handle("DELETE /tasks/{id}", protected(http.HandlerFunc(d.Task.Delete)))
+	mux.Handle("POST /tasks/{id}/assign", protected(http.HandlerFunc(d.Task.Assign)))
 
 	authOnly := Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u, _ := UserFromContext(r.Context())

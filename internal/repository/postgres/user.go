@@ -7,6 +7,7 @@ import (
 
 	"github.com/febrianj/go-task-management-api/internal/domain"
 	"github.com/febrianj/go-task-management-api/internal/service/auth"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -69,5 +70,20 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, 
 		return nil, fmt.Errorf("get user by email: %w", err)
 	}
 
+	return &u, nil
+}
+
+func (r *UserRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
+	var u domain.User
+	err := conn(ctx, r.pool).QueryRow(ctx, `
+         SELECT id, team_id, email, name, password_hash, created_at
+         FROM users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.TeamID, &u.Email, &u.Name, &u.PasswordHash, &u.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrNotFound
+		}
+		return nil, fmt.Errorf("get user by id: %w", err)
+	}
 	return &u, nil
 }

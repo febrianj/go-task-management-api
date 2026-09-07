@@ -6,13 +6,18 @@ import (
 )
 
 const (
-	CodeInvalidRequest     = "INVALID_REQUEST"
-	CodeNotFound           = "NOT_FOUND"
-	CodeInternal           = "INTERNAL_ERROR"
-	CodeValidation         = "VALIDATION_ERROR"
-	CodeUnauthorized       = "UNAUTHORIZED"
-	CodeInvalidCredentials = "INVALID_CREDENTIALS"
-	CodeEmailAlreadyExists = "EMAIL_ALREADY_EXISTS"
+	CodeInvalidRequest        = "INVALID_REQUEST"
+	CodeNotFound              = "NOT_FOUND"
+	CodeInternal              = "INTERNAL_ERROR"
+	CodeValidation            = "VALIDATION_ERROR"
+	CodeUnauthorized          = "UNAUTHORIZED"
+	CodeInvalidCredentials    = "INVALID_CREDENTIALS"
+	CodeEmailAlreadyExists    = "EMAIL_ALREADY_EXISTS"
+	CodeForbidden             = "FORBIDDEN"
+	CodeTaskNotFound          = "TASK_NOT_FOUND"
+	CodeInvalidIdempotencyKey = "INVALID_IDEMPOTENCY_KEY"
+	CodeIdempotencyKeyReused  = "IDEMPOTENCY_KEY_REUSED"
+	CodeConcurrentRequest     = "IDEMPOTENT_REQUEST_IN_PROGRESS"
 )
 
 // FieldError describes a single field-level validation failure
@@ -86,4 +91,12 @@ func Internal(err error) *AppError {
 		Message:    "internal server error",
 		Err:        err,
 	}
+}
+
+func Forbidden(msg string) *AppError {
+	return New(http.StatusForbidden, CodeForbidden, msg)
+}
+
+func Unprocessable(code, msg string) *AppError {
+	return New(http.StatusUnprocessableEntity, code, msg)
 }

@@ -25,7 +25,10 @@ db-reset:
 	docker-compose down -v
 	docker-compose up -d db
 	@sleep 6
-	@(MAKE) migrate
+	@$(MAKE) migrate
 
 test:
 	go test ./...
+
+test-race:
+	go test -race -count=5 ./...
