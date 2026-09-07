@@ -52,13 +52,5 @@ func NewRouter(d Deps) http.Handler {
 	mux.Handle("DELETE /tasks/{id}", protected(http.HandlerFunc(d.Task.Delete)))
 	mux.Handle("POST /tasks/{id}/assign", protected(http.HandlerFunc(d.Task.Assign)))
 
-	authOnly := Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		u, _ := UserFromContext(r.Context())
-		WriteSuccess(w, http.StatusOK, map[string]string{
-			"user_id": u.ID.String(), "team_id": u.TeamID.String(),
-		})
-	}), Authenticate(d.Issuer))
-	mux.Handle("GET /me", authOnly)
-
 	return Chain(mux, RequestID, Logging(d.Log), Recovery(d.Log))
 }
