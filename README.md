@@ -19,6 +19,8 @@ curl localhost:8000/health
 
 | Method | Path                 | Auth    |
 | ------ | -------------------- | ------- |
+| POST   | `/health`            | -       |
+| POST   | `/ready`             | -       |
 | POST   | `/auth/register`     | -       |
 | POST   | `/auth/login`        | -       |
 | POST   | `/tasks`             | &check; |
@@ -27,8 +29,6 @@ curl localhost:8000/health
 | PUT    | `/tasks/{id}`        | &check; |
 | DELETE | `/tasks/{id}`        | &check; |
 | POST   | `/tasks/{id}/assign` | &check; |
-| POST   | `/health`            | &check; |
-| POST   | `/ready`             | &check; |
 
 ### Example
 
